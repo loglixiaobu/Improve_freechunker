@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeChunker 复现流程表 · jina-embeddings-v2-small-en</title>
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161a21; --panel2:#1b2028; --line:#262d38;
+    --txt:#e7eaef; --dim:#98a2b3; --dim2:#6b7480;
+    --accent:#f0a04b;      /* FreeChunker 橙，与论文 Fig.4 一致 */
+    --ok:#4ec9a0; --warn:#e6c34a; --bad:#e5695f; --info:#5aa9e6;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:40px 28px 80px; background:var(--bg); color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",-apple-system,system-ui,sans-serif;
+    font-size:15px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:27px;margin:0 0 6px;letter-spacing:-.3px}
+  .sub{color:var(--dim);font-size:13.5px;margin-bottom:6px}
+  .sub code{color:var(--accent);background:none;padding:0}
+  h2{font-size:19px;margin:44px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  h2 .n{color:var(--accent);font-weight:600;margin-right:8px}
+  h3{font-size:15.5px;margin:26px 0 10px;color:var(--txt)}
+  p{margin:9px 0}
+  code{font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;
+       background:#0a0c0f;border:1px solid var(--line);border-radius:4px;padding:1.5px 5px;color:#c8d3e0}
+  pre{background:#0a0c0f;border:1px solid var(--line);border-left:3px solid var(--accent);
+      border-radius:7px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.6;margin:12px 0}
+  pre code{background:none;border:none;padding:0;color:#c8d3e0}
+  table{width:100%;border-collapse:collapse;margin:13px 0;font-size:13.2px}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--dim);font-weight:600;font-size:12.3px;letter-spacing:.3px}
+  tr:nth-child(even) td{background:#13171d}
+  td.c,th.c{text-align:center}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px;margin:20px 0 6px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 15px}
+  .kpi .k{font-size:11.5px;color:var(--dim2);letter-spacing:.4px;text-transform:uppercase}
+  .kpi .v{font-size:19px;font-weight:600;margin-top:5px;color:var(--accent)}
+  .kpi .n{font-size:11.5px;color:var(--dim);margin-top:3px}
+  .phase{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+         padding:5px 20px 18px;margin:18px 0;position:relative;overflow:hidden}
+  .phase::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+  .phase.p0::before{background:var(--info)} .phase.p1::before{background:var(--ok)}
+  .phase.p2::before{background:var(--accent)} .phase.p3::before{background:#b07fd8}
+  .phase.p4::before{background:var(--dim2)} .phase.p5::before{background:var(--dim2)}
+  .ph-head{display:flex;align-items:baseline;gap:12px;margin:15px 0 4px;flex-wrap:wrap}
+  .ph-head .t{font-size:16.5px;font-weight:600}
+  .ph-head .tag{font-size:11.5px;color:var(--dim2);border:1px solid var(--line);
+                border-radius:20px;padding:2px 10px}
+  .gate{background:#12211c;border:1px solid #23523f;border-left:3px solid var(--ok);
+        border-radius:8px;padding:12px 16px;margin:15px 0}
+  .gate .gt{color:var(--ok);font-weight:600;font-size:13.5px;margin-bottom:6px}
+  .warnbox{background:#241d10;border:1px solid #5a4a1c;border-left:3px solid var(--warn);
+           border-radius:8px;padding:12px 16px;margin:15px 0}
+  .warnbox .gt{color:var(--warn);font-weight:600;font-size:13.5px;margin-bottom:6px}
+  .note{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--info);
+        border-radius:8px;padding:12px 16px;margin:15px 0;color:var(--dim)}
+  .sev{font-weight:700;font-size:12px;white-space:nowrap}
+  .s-red{color:var(--bad)} .s-orange{color:var(--accent)} .s-yellow{color:var(--warn)} .s-green{color:var(--dim2)}
+  .flow{background:#0a0c0f;border:1px solid var(--line);border-radius:9px;padding:18px 20px;
+        font-family:"Cascadia Mono",Consolas,monospace;font-size:12.3px;line-height:1.85;
+        white-space:pre;overflow-x:auto;color:#b9c4d1}
+  .flow b{color:var(--accent);font-weight:600}
+  .flow i{color:var(--ok);font-style:normal}
+  ul{margin:8px 0;padding-left:22px} li{margin:4px 0}
+  .muted{color:var(--dim)}
+  .tag2{display:inline-block;font-size:11px;padding:1px 8px;border-radius:20px;
+        background:#20262f;color:var(--dim);margin-left:6px}
+  hr{border:none;border-top:1px solid var(--line);margin:36px 0}
+  .foot{color:var(--dim2);font-size:12px;margin-top:40px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>FreeChunker 复现流程表</h1>
+<div class="sub">目标模型 <code>jina-embeddings-v2-small-en</code>（33M，论文最小 backbone） · 硬件 <code>gpu42</code> 8 × RTX 3090 24GB</div>
+<div class="sub">论文：<i>FreeChunker: A Cross-Granularity Chunking Framework</i>（ACL 2026 Findings，arXiv:2510.20356）</div>
+<div class="sub muted">本文档标注「实测」的数字，均为在 gpu42 上真实跑出，不是估算。</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="k">训练语料</div><div class="v">100,000 篇</div><div class="n">7 shards × 14,286（实读）</div></div>
+  <div class="kpi"><div class="k">官方训练步数</div><div class="v">200,000</div><div class="n">2 epoch × batch 1</div></div>
+  <div class="kpi"><div class="k">编码总量</div><div class="v">30.9M 条</div><div class="n">308.6 条/篇（实测）</div></div>
+  <div class="kpi"><div class="k">jina 实测吞吐</div><div class="v">832 /s</div><div class="n">3090，bs=32，2.53GB</div></div>
+  <div class="kpi"><div class="k">目标 Overall Top-5</div><div class="v">33.60%</div><div class="n">论文 Table 1</div></div>
+  <div class="kpi"><div class="k">目标 final_val_loss</div><div class="v">0.0103</div><div class="n">官方 training_losses.json</div></div>
+</div>
+
+<h2><span class="n">1</span>论文与代码理解</h2>
+
+<h3>1.1 方法：句子为原子单位，一次前向出多粒度</h3>
+<div class="flow">文档 D
+  │
+  ├─ <b>Stage 1  Sentenizer</b>       D → S = {s₁..sₙ}  →  base 模型编码  →  E ∈ ℝ<sup>n×d</sup>
+  │
+  ├─ <b>Stage 2  Cross-Granularity Encoder</b>
+  │      Chunk Pattern Mask   P ∈ {0,−∞}<sup>m×n</sup>      P[i,j]=0 ⇔ 句子 j 属于第 i 个 pattern
+  │      Q = W_Q·H（H = h_chk 复制 m 份，h_chk 可学习）  K = W_K·E   V = W_V·E
+  │      Attn = softmax(QKᵀ/√d + P)·V  →  24 层 XLM-R  →  全部 m 个 chunk 表征（一次前向）
+  │
+  ├─ <b>Stage 3  Dense Retrieval</b>   embedding = [句子嵌入(粒度1); chunk 嵌入] 拼接 + L2 归一化
+  │
+  └─ <b>Stage 4  Deduplicate &amp; Concatenate</b>
+         句子全局编号存为 【Begin-t】S_t【End-t】
+         top-k 候选按全局句序去重（同 index 留最高分），不连续处插 "..."</div>
+<p class="muted">核心卖点：句子嵌入只算一次、被所有粒度复用；不做语义边界检测 → 比 LumberChunker / SemanticChunker 快 1–2 个数量级（论文 Fig.4 最高 30×）。</p>
+
+<h3>1.2 训练目标与超参</h3>
+<table>
+<tr><th style="width:170px">项</th><th>值</th></tr>
+<tr><td>监督形式</td><td>蒸馏 —— teacher <code>e</code> = base 模型直接编码拼接句子；student <code>v</code> = FreeChunker 组合输出</td></tr>
+<tr><td>Loss</td><td><code>L = 1 − mean(cos(e, v))</code>（等价 <code>nn.CosineEmbeddingLoss</code>）</td></tr>
+<tr><td>优化器 / lr</td><td>AdamW / <code>1e-4</code>，cosine decay + 前 1/3 步 warmup</td></tr>
+<tr><td>batch / epochs</td><td><b>1</b> / 2</td></tr>
+<tr><td>验证</td><td>每 1000 步，200 条样本</td></tr>
+<tr><td>训练粒度</td><td>代码默认 <b>[2, 4]</b></td></tr>
+<tr><td>推理粒度</td><td><b>(1, 2, 4)</b> —— 1 即原始句子嵌入，由 encoder 拼接实现</td></tr>
+<tr><td>编码器规模</td><td>XLM-R-large 几何：24 层 / hidden 1024 / 16 头 / intermediate 4096 / <code>vocab_size=2</code> ≈ <b>302–330M</b></td></tr>
+</table>
+
+<h3>1.3 已实测的关键数字（用于校准预算）</h3>
+<table>
+<tr><th>实测项</th><th class="c">数值</th><th>来源</th></tr>
+<tr><td>训练集行数</td><td class="c"><b>100,000</b></td><td>7 shards × 14,286，下载 shard 0 用 pyarrow 实读</td></tr>
+<tr><td>官方训练总步数</td><td class="c"><b>200,000</b></td><td>官方 <code>training_losses.json</code> 的 <code>total_steps</code></td></tr>
+<tr><td>每篇句数</td><td class="c">p50 <b>125</b> / mean 124.1 / max 231</td><td>实读 shard 0</td></tr>
+<tr><td>每篇 token</td><td class="c">恒为 <b>8000</b></td><td><code>original_token_count</code> 字段</td></tr>
+<tr><td>每篇 span 数 [2,4]</td><td class="c">mean <b>184.5</b></td><td>按 <code>generate_shifted_matrix</code> 复算</td></tr>
+<tr><td>每篇向量总数</td><td class="c">mean <b>308.6</b></td><td>句数 + span 数</td></tr>
+<tr><td>全量编码条数</td><td class="c">≈ <b>30.9M</b></td><td>×100,000</td></tr>
+<tr><td>jina 维度</td><td class="c"><b>512</b>（max_seq_len 8192）</td><td>实跑</td></tr>
+<tr><td><b>jina 吞吐</b></td><td class="c"><b>832 texts/s</b></td><td>3090 实跑，bs=32，峰值显存 2.53GB</td></tr>
+<tr><td>编码耗时</td><td class="c">单卡 <b>10.3h</b> → 8 卡 <b>1.3–1.5h</b></td><td>由吞吐推算</td></tr>
+<tr><td>向量落盘</td><td class="c">≈ <b>63 GB</b>（fp32）</td><td>30.9M × 512 × 4B</td></tr>
+</table>
+
+<h3>1.4 论文 vs 代码的 4 处不一致 <span class="tag2">复现必读</span></h3>
+<table>
+<tr><th class="c" style="width:34px">#</th><th style="width:30%">论文写的</th><th style="width:33%">代码实际</th><th>处理方式</th></tr>
+<tr><td class="c">1</td><td>训练对覆盖 5 个粒度 (2,4,8,16,32)</td><td><code>generate_shifted_matrix</code> 默认 <code>[2,4]</code>；官方 <code>config.json</code> 里 <code>max_power: 4</code></td><td><b>按代码 [2,4]</b>。官方 loss 曲线就是 [2,4] 训出来的，改成 5 个粒度反而对不上</td></tr>
+<tr><td class="c">2</td><td>Sentenizer 用「与传统分块相同的切分规则」（256 token）</td><td>语料 <code>sentences</code> 平均 <b>124 句/篇</b>（≈64 token/句）是<b>真句子</b>；而推理侧 <code>TraditionalChunking(chunk_size=256)</code> 产出 256-token 块</td><td>训练按语料原样，推理按代码原样。这是官方 checkpoint 自带的行为，<b>不要"修正"</b></td></tr>
+<tr><td class="c">3</td><td>Traditional 基线「先按句号切分，再累积到 256 token」</td><td><code>fixed_size_chunking</code> 是<b>纯 token 滑窗截断</b>，无句号切分</td><td>以代码为准</td></tr>
+<tr><td class="c">4</td><td>三个 backbone 各自初始化</td><td>三个训练脚本<b>都</b> <code>from_pretrained('BAAI/bge-m3')</code></td><td><b>不是 bug</b>。论文 §4.2 自称「fixed 330M-parameter sentence-level encoder for all three」</td></tr>
+</table>
+
+<h2><span class="n">2</span>资源盘点（gpu42 实测）</h2>
+<table>
+<tr><th style="width:150px">类别</th><th>现状</th><th style="width:34%">动作</th></tr>
+<tr><td>GPU</td><td>8 × RTX 3090 24GB，<b>全部空闲</b>（0 MiB / 0%）</td><td>直接用</td></tr>
+<tr><td>磁盘</td><td><code>/home1</code> 37T 已用 100%（剩 <b>311G</b>）；<code>/</code> 剩 208G</td><td>向量 63GB，够但无余量</td></tr>
+<tr><td>conda env</td><td><b><code>dcs</code></b> 最全：torch 2.9.1 / transformers 4.57.1 / sentence-transformers 3.2.0 / datasets 4.4.1 / <b>vllm 0.16.0</b> / openai 2.24.0 / einops / matplotlib / tqdm</td><td>用它</td></tr>
+<tr><td>缺的包</td><td><code>json_repair</code>（<code>test_freechunker.py</code> 依赖）</td><td><code>pip install json_repair</code></td></tr>
+<tr><td>HF 直连</td><td>❌ 不通（10s 超时）</td><td>—</td></tr>
+<tr><td>hf-mirror.com</td><td>✅ 通（0.38s）</td><td><code>export HF_ENDPOINT=https://hf-mirror.com</code></td></tr>
+<tr><td>本地代理 10808 / PyPI</td><td>✅ 均通</td><td>备用 / 清华源</td></tr>
+<tr><td>已有 HF 缓存</td><td>122G，但<b>缺所有本任务需要的资产</b></td><td>需下载 ~22GB</td></tr>
+</table>
+
+<h3>待下载资产</h3>
+<table>
+<tr><th>资产</th><th>用途</th><th class="c">大小</th></tr>
+<tr><td><code>XiaSheng/FreeChunk-corpus</code> (dataset)</td><td>训练语料</td><td class="c">3.6 GB</td></tr>
+<tr><td><code>jinaai/jina-embeddings-v2-small-en</code></td><td>teacher / 句级编码器</td><td class="c">0.14 GB</td></tr>
+<tr><td><code>BAAI/bge-m3</code></td><td><b>跨粒度编码器的初始化权重</b></td><td class="c">2.3 GB</td></tr>
+<tr><td><code>XiaSheng/FreeChunk-jina</code></td><td>官方 checkpoint（做评估上限对照）</td><td class="c">1.3 GB</td></tr>
+<tr><td><code>Qwen/Qwen3-8B</code></td><td>生成模型</td><td class="c">~16 GB</td></tr>
+<tr><td><code>zai-org/LongBench-v2</code> (dataset)</td><td>评估集（单 <code>data.json</code>）</td><td class="c">0.47 GB</td></tr>
+</table>
+
+<h2><span class="n">3</span>复现流程表</h2>
+
+<div class="phase p0">
+<div class="ph-head"><span class="t">Phase 0 · 环境与资产</span><span class="tag">~1h</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>动作 / 命令</th><th style="width:26%">产出</th><th style="width:22%">验收</th></tr>
+<tr><td class="c">P0.1</td><td>代码上服务器<br><code>rsync -av --exclude '_*' "C:/Users/xiaobu/Desktop/FreeChunker-main/" 210.77.30.42:~/FreeChunker/</code></td><td><code>~/FreeChunker/</code></td><td><code>ls src/*.py</code> 6 个文件</td></tr>
+<tr><td class="c">P0.2</td><td><code>export HF_ENDPOINT=https://hf-mirror.com</code><br><code>export HF_HOME=~/.cache/huggingface</code></td><td>环境变量</td><td><code>curl -sI $HF_ENDPOINT</code> → 200</td></tr>
+<tr><td class="c">P0.3</td><td>用 <code>huggingface_hub.snapshot_download</code> 拉上面 6 个资产</td><td>HF 缓存</td><td>逐个无报错</td></tr>
+<tr><td class="c">P0.4</td><td><code>~/miniconda/envs/dcs/bin/pip install json_repair -i https://pypi.tuna.tsinghua.edu.cn/simple</code></td><td>—</td><td><code>import json_repair</code> 通过</td></tr>
+<tr><td class="c">P0.5</td><td><b>冒烟测试</b>：加载 jina，<code>UnifiedEncoder</code> 随机初始化跑通一次 <code>build_vector_store</code> + <code>query</code></td><td>打印句数 / chunk 数 / 向量 shape</td><td>不报错，<code>shape = (n+m, 512)</code></td></tr>
+</table>
+<div class="note">P0.5 的 <code>UnifiedEncoder(model_name='jina', local_model_path=None)</code> 会随机初始化一个 FreeChunkerModel（<code>from_pretrained(None)</code> 走 config 初始化）—— 只要验证前向跑通，不要求数值。</div>
+</div>
+
+<div class="phase p1">
+<div class="ph-head"><span class="t">Phase 1 · 数据准备</span><span class="tag">~2h · 8 卡并行</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>动作</th><th style="width:30%">产出</th><th style="width:22%">验收</th></tr>
+<tr><td class="c">P1.1</td><td><b>重建 LongBench-v2 本地目录</b>：HF 上只有一个 <code>data.json</code>（单 split），但所有脚本都按 6 个 domain 当 config 加载 → 必须自己拆</td><td><code>./LongBench-v2/{single-doc,multi-doc,code-repo,long-dialogue,long-icl,long-structured}/</code> + <code>dataset_dict.json</code></td><td><code>load_dataset('./LongBench-v2','single-doc')</code> 可读；6 个 domain 合计 <b>503</b> 题</td></tr>
+<tr><td class="c">P1.2</td><td><b>8 卡分片编码</b>：把 <code>1_build_pretrain_datasets.py</code> 的 <code>TASKS</code> 复制 8 份，<code>start_idx/end_idx</code> 各 12,500 篇，用 <code>CUDA_VISIBLE_DEVICES=k</code> 起 8 进程</td><td><code>./vector/jina-embeddings-v2-small-en/part_{0..99}</code></td><td>每 part 1000 行；总行数 ≈ <b>100,000</b></td></tr>
+<tr><td class="c">P1.3</td><td><b>合并 part_*</b>（脚本与训练脚本路径不一致，必须补这一步）</td><td><code>.../train/</code>、<code>.../val/</code></td><td>见 G1</td></tr>
+<tr><td class="c">P1.4</td><td>落盘检查</td><td>—</td><td><code>du -sh</code> ≈ 63GB；<code>len(ds)</code> = 100,000</td></tr>
+</table>
+
+<h3>P1.1 的 domain 映射（<code>data.json</code> 里 <code>domain</code> 是全名字符串，已实测确认）</h3>
+<table>
+<tr><th><code>domain</code> 字段值</th><th>目录名</th></tr>
+<tr><td><code>Single-Document QA</code></td><td><code>single-doc</code></td></tr>
+<tr><td><code>Multi-Document QA</code></td><td><code>multi-doc</code></td></tr>
+<tr><td><code>Code Repository Understanding</code></td><td><code>code-repo</code></td></tr>
+<tr><td><code>Long In-context Learning</code></td><td><code>long-icl</code></td></tr>
+<tr><td><code>Long-dialogue History Understanding</code></td><td><code>long-dialogue</code></td></tr>
+<tr><td><code>Long Structured Data Understanding</code></td><td><code>long-structured</code></td></tr>
+</table>
+
+<h3>P1.3 合并脚本</h3>
+<pre><code>import glob, os
+from datasets import load_from_disk, concatenate_datasets
+
+root = './vector/jina-embeddings-v2-small-en'
+parts = sorted(glob.glob(os.path.join(root, 'part_*')))
+assert len(parts) == 100, len(parts)
+ds = concatenate_datasets([load_from_disk(p) for p in parts])
+print('train rows:', len(ds), '| feat:', ds.features)
+ds.save_to_disk(os.path.join(root, 'train'))
+
+for split in ('val', 'test'):
+    ps = sorted(glob.glob(os.path.join(root, split, 'part_*')))
+    if ps:
+        d = concatenate_datasets([load_from_disk(p) for p in ps])
+        print(split, len(d))
+        d.save_to_disk(os.path.join(root, split, 'merged'))</code></pre>
+
+<div class="gate">
+<div class="gt">✔ 验收门 G1 —— 编码正确性</div>
+<ol>
+<li>随机抽 5 篇，取 <code>input</code>（n 条句向量）与 <code>label</code>（m 条 span 向量），用 <code>generate_shifted_matrix(n)</code> 复算 span 数 → 必须 <code>m == len(label)</code>。</li>
+<li>对每条 label，用 jina <b>直接编码</b>对应拼接文本 → <code>cos(直接编码, label) &gt; 0.999</code>。</li>
+<li><code>input</code> 的 dtype 必须是 <code>float32</code>，维度 512。</li>
+</ol>
+</div>
+</div>
+
+<div class="phase p2">
+<div class="ph-head"><span class="t">Phase 2 · 训练 jina 编码器</span><span class="tag">~5h · 单卡</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>动作</th><th style="width:28%">产出</th><th style="width:24%">验收</th></tr>
+<tr><td class="c">P2.1</td><td>修 <code>3_train_jina.py</code>：① 数据路径改到 P1.3 产物 ② 保存路径改到测试脚本能读到的位置 ③ 建议把 <code>.to('cuda')</code> 从 <code>__getitem__</code> 挪进训练循环</td><td>可跑的训练脚本</td><td>干跑 10 步，loss 从 ~0.95 开始降</td></tr>
+<tr><td class="c">P2.2</td><td><code>cd ~/FreeChunker &amp;&amp; PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 ~/miniconda/envs/dcs/bin/python "train and preprocess/3_train_jina.py"</code></td><td><code>./saved_models/jina-embeddings-v2-small-en/</code>、<code>training_losses.json</code>、<code>loss_curve.png</code></td><td>跑满 <b>200,000</b> 步</td></tr>
+<tr><td class="c">P2.3</td><td>对齐官方曲线</td><td>对照表</td><td>见 G2</td></tr>
+<tr><td class="c">P2.4</td><td>保存最终 checkpoint</td><td><code>model.safetensors</code> + <code>config.json</code></td><td>用 <code>FreeChunkerModel.from_pretrained(path)</code> 能加载（<b>不能用 <code>AutoModel</code></b>）</td></tr>
+</table>
+<div class="note"><b>单卡就够</b>：200k 步 × 330M 模型 × seq≈124 的前向反向，算力上只要几毫秒/步，瓶颈是 batch=1 的数据搬运。不建议改多卡 DDP（仓库没写，改错风险大于收益）。真正需要 8 卡的是 Phase 1。</div>
+
+<div class="gate">
+<div class="gt">✔ 验收门 G2 —— 训练曲线对齐官方</div>
+<table>
+<tr><th>指标</th><th class="c">官方值</th><th class="c">通过标准</th></tr>
+<tr><td>step 1–5 loss</td><td class="c">0.9505 – 0.9652</td><td class="c">起始落在 0.93 – 0.98</td></tr>
+<tr><td>前 1000 步均值</td><td class="c"><b>0.4497</b></td><td class="c">0.40 – 0.50</td></tr>
+<tr><td>末 1000 步均值</td><td class="c"><b>0.0109</b></td><td class="c">≤ 0.020</td></tr>
+<tr><td><code>final_train_loss</code></td><td class="c">0.0109</td><td class="c">≤ 0.020</td></tr>
+<tr><td><code>final_val_loss</code></td><td class="c"><b>0.0103</b></td><td class="c">0.008 – 0.015</td></tr>
+<tr><td>val 收敛平台</td><td class="c">后段稳定 0.0103</td><td class="c">不震荡、不回升</td></tr>
+</table>
+</div>
+</div>
+
+<div class="phase p3">
+<div class="ph-head"><span class="t">Phase 3 · 评估</span><span class="tag">~3h</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>动作</th><th style="width:26%">产出</th><th style="width:24%">验收</th></tr>
+<tr><td class="c">P3.1</td><td>起 vLLM：<code>~/miniconda/envs/dcs/bin/python "train and preprocess/server.py"</code>，<b>建议加 <code>--tensor-parallel-size 2</code></b>（Qwen3-8B bf16 权重 16.4GB + 40k 上下文 KV ≈ 6GB，单张 24GB 很紧）</td><td><code>http://localhost:8888/health</code> → 200</td><td><code>curl localhost:8888/v1/models</code> 列出 Qwen3-8B</td></tr>
+<tr><td class="c"><b>P3.2</b></td><td><b>先跑官方 checkpoint</b>：<code>test/test_freechunker.py</code> 里 <code>encoder_model_path</code> 指向 <code>XiaSheng/FreeChunk-jina</code> 本地快照，<code>dataset_path</code> 改成 P1.1 绝对路径</td><td>评估结果 md</td><td><b>得到「评估上限」</b></td></tr>
+<tr><td class="c">P3.3</td><td>再跑自己训的 checkpoint</td><td>评估结果 md</td><td>与 P3.2 差距 ≤ 1pp → 训练复现到位</td></tr>
+<tr><td class="c">P3.4</td><td>填论文 Table 1 的 jina 行</td><td>6 domain × Top-5/Top-10</td><td>见 G4</td></tr>
+</table>
+<div class="warnbox">
+<div class="gt">⚠ P3.2 是全流程里最值钱的一步</div>
+官方权重 + 官方评估代码 = 你能拿到的最高分。之后自己训练的分数若低于它，差距就是训练的问题；若<b>官方权重都达不到论文数字</b>，那是评估链路（vLLM 版本 / 答案解析 / prompt）有偏差，跟训练无关。没有这一步，你会把两个问题混在一起查。
+</div>
+
+<div class="gate">
+<div class="gt">✔ 验收门 G4 —— 论文 Table 1 · jina-small-en 行</div>
+<table>
+<tr><th>类别</th><th class="c">Top-5</th><th class="c">Top-10</th></tr>
+<tr><td>I. Single-Document QA</td><td class="c">35.43</td><td class="c">32.57</td></tr>
+<tr><td>II. Multi-Document QA</td><td class="c">26.40</td><td class="c">26.40</td></tr>
+<tr><td>III. Code Repository Understanding</td><td class="c">46.00</td><td class="c">44.00</td></tr>
+<tr><td>IV. Long In-context Learning</td><td class="c">32.10</td><td class="c">28.40</td></tr>
+<tr><td>V. Long-dialogue History</td><td class="c">28.21</td><td class="c">23.08</td></tr>
+<tr><td>VI. Long Structured Data</td><td class="c">42.42</td><td class="c">45.45</td></tr>
+<tr><td><b>VII. Overall</b></td><td class="c"><b>33.60</b></td><td class="c"><b>31.61</b></td></tr>
+</table>
+通过标准：Overall 相差 <b>≤ 2pp</b>；单类别允许更大波动（论文自己各 baseline 的类别间方差就到 3.5%）。
+</div>
+</div>
+
+<div class="phase p4">
+<div class="ph-head"><span class="t">Phase 4 · 基线（可选，最贵的部分）</span><span class="tag">20–40h</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>脚本</th><th>依赖</th><th style="width:30%">备注</th></tr>
+<tr><td class="c">P4.1</td><td><code>9_chunk_traditional.py</code></td><td>Qwen3 tokenizer</td><td>最快，几分钟</td></tr>
+<tr><td class="c">P4.2</td><td><code>7_chunk_semantic.py</code></td><td><code>BAAI/bge-m3</code></td><td>中等；脚本里 <code>embed_models</code> 写死了 bge-m3</td></tr>
+<tr><td class="c">P4.3</td><td><code>6_chunk_ppl.py</code> / <code>8_chunk_margin.py</code></td><td><code>Qwen/Qwen2.5-1.5B-Instruct</code></td><td>需额外下 1.5B 模型</td></tr>
+<tr><td class="c">P4.4</td><td><code>5_chunk_lumber.py</code></td><td>vLLM + Qwen3-8B</td><td><b>最贵</b>：每篇几百秒 × 503 题 → 数十小时；脚本自带 checkpoint 断点续跑</td></tr>
+<tr><td class="c">P4.5</td><td>各自 <code>test/test_*.py</code> 评估</td><td>vLLM</td><td>每个基线一套评估</td></tr>
+</table>
+<div class="note">如果目标只是「证明 FreeChunker 在 jina 上能复现」，<b>Phase 4 可以整体跳过</b>，直接用论文 Table 1 已发表的基线数字做对照。要自己重跑基线，主要动机是验证评测链路，而不是验证 FreeChunker。</div>
+</div>
+
+<div class="phase p5">
+<div class="ph-head"><span class="t">Phase 5 · 附录实验（可选）</span><span class="tag">~2h</span></div>
+<table>
+<tr><th class="c" style="width:52px">步骤</th><th>内容</th><th style="width:30%">对应论文</th></tr>
+<tr><td class="c">P5.1</td><td><code>fc-no</code>（同架构不训练）/ <code>Avg</code>（句向量均值池化）/ <code>FC</code>（训练后）三者对比</td><td>Appendix B / Table 2</td></tr>
+<tr><td class="c">P5.2</td><td>长输入显存与延迟：<code>Concat</code> vs <code>FreeChunker</code>，100 条长样本，{2,4,8,16} 粒度</td><td>Appendix F / Table 5（论文：显存 −53.95%，延迟 −33.98%）</td></tr>
+<tr><td class="c">P5.3</td><td>粒度 2/4/8/16 的 <code>Dist</code> / <code>Diff</code> 对齐诊断</td><td>Appendix D / Table 4</td></tr>
+<tr><td class="c">P5.4</td><td>test split 上的 cos loss 分布（阈值 0.06，jina 应 100% 低于阈值且集中在 0.01–0.02）</td><td>Figure 3 下排</td></tr>
+</table>
+</div>
+
+<h2><span class="n">4</span>坑清单（按严重度排序）</h2>
+<table>
+<tr><th class="c" style="width:34px">#</th><th style="width:96px">严重度</th><th style="width:38%">问题</th><th>修法</th></tr>
+<tr><td class="c">1</td><td><span class="sev s-red">🔴 阻断</span></td><td><code>1_build_pretrain_datasets.py</code> 把 part_* 存到 <code>./vector/jina-.../part_N</code>，而 <code>3_train_jina.py</code> 读 <code>./vector/jina-.../train</code> —— <b>路径不匹配，训练脚本直接报错</b></td><td>加 P1.3 的合并步骤</td></tr>
+<tr><td class="c">2</td><td><span class="sev s-red">🔴 阻断</span></td><td><code>baseline/traditional_chunking.py</code> 的默认 tokenizer 硬编码 <code>/share/home/ecnuzwx/UnifiedRAG/cache/models--Qwen--Qwen3-8B</code>，服务器上不存在 → <code>Sentenizer</code> 初始化即失败。<b>而它决定了句子切分粒度，直接影响所有结果</b></td><td>显式传 tokenizer，或把默认值改成 <code>Qwen/Qwen3-8B</code></td></tr>
+<tr><td class="c">3</td><td><span class="sev s-red">🔴 阻断</span></td><td>HF 上 <code>zai-org/LongBench-v2</code> 只有一个 <code>data.json</code>（单 split），但脚本都 <code>load_dataset(path, domain)</code> 按 6 个 config 加载</td><td>做 P1.1</td></tr>
+<tr><td class="c">4</td><td><span class="sev s-red">🔴 阻断</span></td><td><code>src/</code> 没有 <code>__init__.py</code>；<code>python "train and preprocess/3_train_jina.py"</code> 时 <code>sys.path[0]</code> 是脚本目录不是仓库根 → <code>from src.freechunker import ...</code> 失败</td><td><code>PYTHONPATH=. python ...</code></td></tr>
+<tr><td class="c">5</td><td><span class="sev s-orange">🟠 高</span></td><td>训练脚本输出 <code>./saved_models/jina-embeddings-v2-small-en/qwen3_epoch_{e}</code>，测试脚本读 <code>../saved_models/2-epoch/jina-embeddings-v2-small-en/jina_epoch_1</code> —— <b>两边对不上</b></td><td>统一路径</td></tr>
+<tr><td class="c">6</td><td><span class="sev s-orange">🟠 高</span></td><td><code>test_freechunker.py</code> 里 <code>dataset_path='../Data/LongBench-v2'</code> 是相对路径，且与 <code>EncoderQASystem</code> 默认值 <code>'zai-org/LongBench-v2'</code> 不一致</td><td>改成绝对路径</td></tr>
+<tr><td class="c">7</td><td><span class="sev s-orange">🟠 高</span></td><td><code>json_repair</code> 未安装</td><td>P0.4</td></tr>
+<tr><td class="c">8</td><td><span class="sev s-orange">🟠 高</span></td><td>单张 3090 跑 Qwen3-8B @ 40k 上下文吃紧（16.4GB 权重 + ~6GB KV）</td><td><code>--tensor-parallel-size 2</code></td></tr>
+<tr><td class="c">9</td><td><span class="sev s-yellow">🟡 中</span></td><td>超长 context 的显存风险：2M 词文档 → n≈10⁴ 句、m≈1.5n pattern，attention mask 到 GB 级</td><td>监控峰值显存；必要时按 context 长度切块</td></tr>
+<tr><td class="c">10</td><td><span class="sev s-yellow">🟡 中</span></td><td>仓库 <code>src/encoder.py</code> 用 <code>local_model_path=</code>，而 HF <code>XiaSheng/FreeChunk-jina</code> 里的 <code>encoder.py</code> 用 <code>model_name_or_path=</code> 且带 <code>from_pretrained</code> 类方法 —— <b>两份实现签名不同</b></td><td>用官方 checkpoint 时注意 <code>trust_remote_code</code> 会走 HF 那份</td></tr>
+<tr><td class="c">11</td><td><span class="sev s-yellow">🟡 中</span></td><td>保存后的 checkpoint <code>config.json</code> 里 <code>vocab_size=2</code>，用 <code>AutoModel.from_pretrained</code> 会按 <code>model_type=xlm-roberta</code> 解析成 <code>XLMRobertaModel</code> 并报错</td><td>必须用 <code>FreeChunkerModel.from_pretrained(path)</code></td></tr>
+<tr><td class="c">12</td><td><span class="sev s-green">🟢 低</span></td><td>README 提到的 <code>upload_prep/</code> 目录在仓库里不存在</td><td>忽略</td></tr>
+<tr><td class="c">13</td><td><span class="sev s-green">🟢 低</span></td><td><code>/home1</code> 已用 100%，只剩 311G；向量要 63GB</td><td>编码前先 <code>df -h</code>，不够就改存 <code>/</code>（剩 208G）或存 fp16</td></tr>
+</table>
+
+<h3>4.1 执行中新增的坑 <span class="tag2">2026-10-03 实测</span></h3>
+<table>
+<tr><th class="c" style="width:34px">#</th><th style="width:96px">严重度</th><th style="width:38%">问题</th><th>修法</th></tr>
+<tr><td class="c">14</td><td><span class="sev s-red">🔴 阻断</span></td><td><b>语料本地加载方式</b>：<code>XiaSheng/FreeChunk-corpus</code> 仓库布局里<b>没有根 <code>dataset_dict.json</code></b>，所以 <code>load_from_disk(根)</code> 报 <code>neither a Dataset directory nor a DatasetDict directory</code>；而 <code>load_dataset(根, split=...)</code> 又会把 <code>val/</code> 误判成 json split，报 <code>Couldn't infer the same data file format for all splits</code>。<b>作者脚本能跑，是因为它在 hub 上加载而不是本地</b></td><td>按 split 子目录逐个加载：<code>load_from_disk(f"{root}/train")</code>、<code>load_from_disk(f"{root}/val")</code>（并把脚本里 <code>split="validation"</code> 改成 <code>split="val"</code>）</td></tr>
+<tr><td class="c">15</td><td><span class="sev s-yellow">🟡 中</span></td><td><b>hf-mirror 对 <code>.DS_Store</code> 返回 403</b>，导致 <code>snapshot_download</code> 整个语料仓库失败（已下 2.7G 白下）</td><td><code>ignore_patterns=[".DS_Store", "**/.DS_Store", ".gitattributes"]</code></td></tr>
+</table>
+<div class="note">实测确认：按 split 子目录加载后 <code>train=100000 / val=9880</code>，与官方 200,000 步（2 epoch × batch 1）完全吻合；<code>[2,4]</code> 的 span 数用 <code>generate_shifted_matrix</code> 复算与独立复算一致。</div>
+
+<h2><span class="n">5</span>时间与磁盘预算</h2>
+<table>
+<tr><th>阶段</th><th class="c">耗时</th><th class="c">并行度</th><th class="c">磁盘</th></tr>
+<tr><td>P0 下载 + 环境</td><td class="c">~1h</td><td class="c">—</td><td class="c">~22GB</td></tr>
+<tr><td>P1 编码</td><td class="c">~1.5h</td><td class="c">8 卡</td><td class="c">~63GB</td></tr>
+<tr><td>P2 训练</td><td class="c">~5h</td><td class="c">1 卡</td><td class="c">&lt; 5GB</td></tr>
+<tr><td>P3 评估</td><td class="c">~3h</td><td class="c">1–2 卡（vLLM）</td><td class="c">&lt; 2GB</td></tr>
+<tr><td>P4 基线（可选）</td><td class="c">20–40h</td><td class="c">—</td><td class="c">~10GB</td></tr>
+<tr><td>P5 附录（可选）</td><td class="c">~2h</td><td class="c">—</td><td class="c">&lt; 1GB</td></tr>
+<tr><td><b>小计（不含 P4）</b></td><td class="c"><b>~11h 纯跑 + 调试余量 → 1.5–2 天</b></td><td class="c"></td><td class="c"><b>~90GB</b></td></tr>
+</table>
+
+<h2><span class="n">6</span>建议的执行顺序（含决策点）</h2>
+<div class="flow">P0 环境资产
+   ↓
+P0.5 冒烟（前向跑通）
+   ↓
+P1.1 LongBench 本地目录 ──► P1.2 8卡编码 ──► P1.3 合并 ──► <i>G1 验收</i>
+   ↓                                                          │
+   ├────────────────────────────────────────────────────────┤
+   ↓                                                          ↓
+P3.1 起 vLLM ──► P3.2 官方 checkpoint 评估（拿「上限」）     P2.1 改脚本
+   │                    │                                      ↓
+   │                    │                                 P2.2 训练 20 万步
+   │                    │                                      ↓
+   │                    │                                 <i>G2 曲线对齐</i> ◄─ 不过就回 P2.2
+   │                    ↓                                      ↓
+   └────────────► P3.3 自己的 checkpoint 评估 ◄──────────────┘
+                       ↓
+                 <i>G4 对齐论文 Table 1</i>
+                       ↓
+              P4/P5 基线 &amp; 附录（可选）</div>
+
+<div class="warnbox">
+<div class="gt">三条决策规则</div>
+<ol>
+<li><b>G1 不过就别进 P2</b>。编码产物错了，训练曲线再漂亮也是错的。</li>
+<li><b>G2 不过先查数据不是查超参</b>。loss 停在 0.3 这种量级通常是 label 与 input 没对齐（span 顺序错了），而不是 lr 不对。</li>
+<li><b>G4 不过先看 P3.2 的官方分数</b>。官方都达不到 → 查评估链路；官方达到了自己没达到 → 查训练。</li>
+</ol>
+</div>
+
+<div class="foot">FreeChunker 复现流程表 · 针对 jina-embeddings-v2-small-en / 8 × RTX 3090 · 所有实测数字来自 gpu42</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# ---- 临时 / 缓存 ----
+.workbuddy-ai/scratch/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# ---- 实验原始产物 ----
+# 每次实验的 raw_*.jsonl 动辄几十 MB，不入库。
+# 用 results/<exp-id>/cmd.txt + gap.md 记录「怎么跑的、结果如何」即可。
+Improve_freechunk/results/*/raw_*.jsonl
+Improve_freechunk/results/*/*.log
+Improve_freechunk/results/*/*.tmp
+
+# ---- 大数据 / 模型权重（只在服务器上，不入库）----
+datasets/
+models/
+LongBench-v2_chunked/
+vector/
+saved_models/
+eval_results/
+logs/
+checkpoints/
+
+# ---- 训练过程产生的大 JSON ----
+results/training_losses.json
+
+# ---- 备份文件 ----
+*.bak
+*.bak_*
+*.orig

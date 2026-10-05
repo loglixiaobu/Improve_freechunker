@@ -1,0 +1,4 @@
+﻿method,TopK5_pct,TopK10_pct,n_questions,total_time_s
+FreeChunker,31.81,31.61,503,4009.8
+Traditional(256),28.43,33.60,503,0.0
+Traditional(512),29.22,31.01,503,0.0
